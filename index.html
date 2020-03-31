@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>FQS食品查询系统</title>
+    <link rel="shortcut icon" href="favicon.ico"/>
+    <link rel="bookmark" href="favicon.ico"/>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <!--<link rel="stylesheet" href="assets/font-awesome-4.7.0/css/font-awesome.min.css">-->
+    <link rel="stylesheet" href="assets/layui/css/layui.css"  media="all">
+    <script src="assets/layui/layui.js" charset="utf-8"></script>
+    <script src="assets/jquery/jquery-3.4.1.min.js"></script>
+    <script type="text/javascript">
+        $(function () {
+            let body_height=$(".layui-body").height();
+            $("#content").height(body_height-85);
+            $("#menu>dd").click(function () {
+                $("#content").attr('src',$(this).data('category')+'.html')
+            })
+        });
+    </script>
+</head>
+<body class="layui-layout-body">
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header">
+        <div class="layui-logo"><i class="layui-icon layui-icon-set-fill"></i>&nbsp;FQS后台管理界面</div>
+    </div>
+
+    <div class="layui-side layui-bg-black">
+        <div class="layui-side-scroll">
+            <!-- 左侧导航区域（可配合layui已有的垂直导航） -->
+            <ul class="layui-nav layui-nav-tree">
+                <li class="layui-nav-item layui-nav-itemed">
+                    <a class="" href="javascript:">数据管理<span class="layui-nav-more"></span></a>
+                    <dl class="layui-nav-child" id="menu">
+                        <dd data-category="brand" class="layui-this"><a href="javascript:">品牌管理</a></dd>
+                        <dd data-category="type"><a href="javascript:">类型管理</a></dd>
+                        <dd data-category="ingredient"><a href="javascript:">配料管理</a></dd>
+                        <dd data-category="food"><a href="javascript:">食品管理</a></dd>
+                    </dl>
+                </li>
+                <span class="layui-nav-bar"></span>
+            </ul>
+        </div>
+    </div>
+
+    <div class="layui-body">
+        <!-- 内容主体区域 -->
+        <div id="container" style="padding: 15px;">
+        <iframe  id="content" src="brand.html" width="100%" scrolling="no" style="border: 0px;"></iframe>
+        </div>
+    </div>
+
+</div>
+<script>
+    //JavaScript代码区域
+    layui.use(['element','layer'], function(){
+        let element = layui.element;
+
+    });
+</script>
+</body>
+</html>

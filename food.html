@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="shortcut icon" href="favicon.ico"/>
+    <link rel="bookmark" href="favicon.ico"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>食品管理</title>
+    <link rel="stylesheet" href="assets/layui/css/layui.css">
+    <script src="assets/layui/layui.js"></script>
+    <script src="assets/xm-select/xm-select.js"></script>
+    <script src="assets/jquery/jquery-3.4.1.min.js"></script>
+    <script type="text/javascript">
+
+        function QueryData(layer, method, url, queryData) {
+            let response;
+            let index = layer.load(0);
+            $.ajax({
+                type: method,
+                url: url,
+                async: false,
+                dataType: 'json',
+                data: queryData,
+                success: function (data) {
+                    layer.close(index);
+                    response = data;
+                    if (response.code !== 200) {
+                        layer.msg(response.error_message)
+                    }
+                },
+                error: function () {
+                    layer.close(index);
+                }
+            });
+            return response;
+        }
+
+        function RenderPage(laypage, food_table, elem, curr, limit, count) {
+            laypage.curr = curr;
+            laypage.limit = limit;
+            laypage.render({
+                elem: elem,
+                layout: ['count', 'prev', 'page', 'next', 'limit', 'skip'],
+                curr: curr,
+                limit: limit,
+                count: count,
+                jump: function (obj, first) {
+                    if (!first) {
+                        let response = QueryData(layer, 'POST', '/WebApi/FQS/Food/Query', {
+                            'food_name': $("#food_name").text(),
+                            'page_index': obj.curr,
+                            'page_size': obj.limit,
+                            'order_by': 'T1.id'
+                        });
+                        if (response.data == null) {
+                            response.data = [];
+                        }
+                        food_table.reload({data: response.data});
+                        RenderPage(laypage, food_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
+                    }
+                }
+            });
+        }
+
+        $(function () {
+            layui.use(['layer', 'form', 'table', 'element', 'laypage','util'], function () {
+                let layer = layui.layer
+                    , form = layui.form
+                    , laypage = layui.laypage
+                    , element = layui.element
+                    , table = layui.table
+                    ,util=layui.util;
+
+                let food_table = table.render({
+                    elem: '#food'
+                    , toolbar: '#toolbar'
+                    , defaultToolbar: ['filter']
+                    , height: 'full-200'
+                    , cellMinWidth: 80
+                    , data: []
+                    , cols: [[ //表头
+                        {type: 'checkbox'}
+                        , {field: 'food_id', title: 'ID'}
+                        , {field: 'food_name', title: '食品名'}
+                        , {field: 'brand', title: '品牌',templet:'<div>{{d.brand.brand_name}}</div>'}
+                        , {field: 'type', title: '类型',templet:'<div>{{d.type.type_name}}</div>'}
+                        , {field: 'ingredients', title: '配料', templet: '#ingredientNameTemplate'}
+                    ]]
+                });
+                let addFoodPageIndex;
+                table.on('toolbar(food)', function (obj) {
+                    let checkStatus = table.checkStatus(obj.config.id);
+                    switch (obj.event) {
+                        case 'delete':
+                            let data = checkStatus.data;
+                            if (data.length === 0) {
+                                layer.alert('必须选中要删除的行');
+                            } else {
+                                layer.confirm('确认删除', function (index) {
+                                    for (let i = 0; i < data.length; i++) {
+                                        let food = data[i];
+                                        $.ajax({
+                                            type: 'POST',
+                                            url: '/WebApi/FQS/Food/Delete',
+                                            async: false,
+                                            dataType: 'json',
+                                            data: {'food_id': food.food_id},
+                                            success: function (data) {
+                                                if (data.code !== 200) {
+                                                    layer.msg(data.error_message)
+                                                }
+                                            }
+                                        });
+                                    }
+                                    layer.close(index);
+                                    let response = QueryData(layer, 'POST', '/WebApi/FQS/Food/Query', {
+                                        'food_name': $("#food_name").text(),
+                                        'page_index': laypage.curr,
+                                        'page_size': laypage.limit,
+                                        'order_by': 'T1.id'
+                                    });
+                                    if (response.data == null) {
+                                        response.data = [];
+                                    }
+                                    food_table.reload({data: response.data});
+                                    RenderPage(laypage, food_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
+                                });
+                            }
+                            break;
+                        case 'add':
+                            addFoodPageIndex = layer.open({
+                                type: 2,
+                                title:"",
+                                scrollbar: false,
+                                area: ['500px', '600px'],
+                                content: 'food_add_page.html'
+                            });
+                            break;
+                    }
+                });
+                form.on('submit(foodSearch)', function (data) {
+                    let response = QueryData(layer, 'POST', '/WebApi/FQS/Food/Query', {
+                        'food_name': data.field.food_name,
+                        'page_index': 1,
+                        'page_size': 10,
+                        'order_by': 'T1.id'
+                    });
+                    if (response.data == null) {
+                        response.data = [];
+                    }
+                    food_table.reload({data: response.data});
+                    RenderPage(laypage, food_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
+                    return false;
+                });
+                util.event('lay-active',{
+                    tip:function () {
+                        layer.alert($(this).data('info'));
+                    }
+                });
+                RenderPage(laypage, food_table, 'page', 1, 10, 1);
+                let init_data = QueryData(layer, 'POST', '/WebApi/FQS/Food/Query', {
+                    'food_name': '',
+                    'page_index': 1,
+                    'page_size': 10,
+                    'order_by': 'T1.id'
+                });
+                if (init_data.data == null) {
+                    init_data.data = [];
+                }
+                food_table.reload({data: init_data.data});
+                RenderPage(laypage, food_table, 'page', init_data.page_entity.page_index, init_data.page_entity.page_size, init_data.page_entity.total_row);
+            });
+        });
+    </script>
+</head>
+<body>
+<div class="layui-container">
+    <div class="layui-row">
+        <div class="layui-fluid">
+            <form id="food-search-form" class="layui-form" action="">
+                <div class="layui-form-item">
+                    <div class="layui-input-inline">
+                        <input id="food_name" type="text" name="food_name" placeholder="食品名" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                    <div class="layui-input-inline">
+                        <button class="layui-btn layui-btn-normal" lay-submit lay-filter="foodSearch">查询</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="layui-row">
+        <div class="layui-fluid">
+            <table id="food" lay-filter="food"></table>
+            <div id="page"></div>
+        </div>
+    </div>
+</div>
+</body>
+<script type="text/html" id="toolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">添加</button>
+        <button class="layui-btn layui-btn-danger layui-btn-sm" lay-event="delete">删除</button>
+    </div>
+</script>
+<!--<script type="text/html" id="foodAddPage">-->
+    <!--<form class="layui-form" action="">-->
+        <!--<div class="layui-form-item">-->
+            <!--<label class="layui-form-label">食品名</label>-->
+            <!--<div class="layui-input-block">-->
+                <!--<input type="text" name="title" lay-verify="required" lay-reqtext="必须输入食品名" autocomplete="off"-->
+                       <!--placeholder="请输入食品名" class="layui-input">-->
+            <!--</div>-->
+        <!--</div>-->
+        <!--<div class="layui-form-item">-->
+            <!--<label class="layui-form-label">品牌</label>-->
+            <!--<div class="layui-input-block">-->
+                <!--&lt;!&ndash;<input type="text" name="title" lay-verify="required" lay-reqtext="必须输入食品名" autocomplete="off" placeholder="请输入食品名" class="layui-input" style="position:absolute;z-index: 2;">&ndash;&gt;-->
+                <!--<select name="brand_id" lay-search lay-verify="required">-->
+                    <!--<option value="111">111</option>-->
+                    <!--<option value="222">222</option>-->
+                    <!--<option value="333">333</option>-->
+                <!--</select>-->
+            <!--</div>-->
+        <!--</div>-->
+        <!--<div class="layui-form-item">-->
+            <!--<label class="layui-form-label">类型</label>-->
+            <!--<div class="layui-input-block">-->
+                <!--<select name="type_id" lay-search lay-verify="required">-->
+                <!--</select>-->
+            <!--</div>-->
+        <!--</div>-->
+        <!--<div class="layui-form-item">-->
+            <!--<label class="layui-form-label">配料</label>-->
+            <!--<div class="layui-input-block">-->
+                <!--<select name="ingredient_id" lay-search lay-verify="required">-->
+                <!--</select>-->
+            <!--</div>-->
+        <!--</div>-->
+    <!--</form>-->
+<!--</script>-->
+<script type="text/html" id="ingredientNameTemplate">
+    {{# layui.each(d.ingredients, function(index, item){ }}
+        <button class="layui-btn layui-btn-xs layui-btn-radius layui-btn-normal" data-info="{{=item.ingredient_info}}" lay-active="tip">{{=item.ingredient_name}}</button>
+    {{# }); }}
+</script>
+<script type="text/html" id="ingredientInfoTemplate">
+    <table class="layui-table">
+        <tbody>
+        {{# layui.each(d.ingredients, function(index, item){ }}
+        <tr>
+            <td>
+                {{ item.ingredient_info }}
+            </td>
+        </tr>
+        {{# }); }}
+        </tbody>
+    </table>
+</script>
+</html>

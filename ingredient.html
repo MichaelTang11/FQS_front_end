@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>原料管理</title>
+    <link rel="shortcut icon" href="favicon.ico"/>
+    <link rel="bookmark" href="favicon.ico"/>
+    <link rel="stylesheet" href="assets/layui/css/layui.css">
+    <script src="assets/layui/layui.js"></script>
+    <script src="assets/jquery/jquery-3.4.1.min.js"></script>
+    <script type="text/javascript">
+
+        function QueryData(layer, method, url, queryData) {
+            let response;
+            let index = layer.load(0);
+            $.ajax({
+                type: method,
+                url: url,
+                async: false,
+                dataType: 'json',
+                data: queryData,
+                success: function (data) {
+                    layer.close(index);
+                    response = data;
+                    if (response.code !== 200) {
+                        layer.msg(response.error_message)
+                    }
+                },
+                error: function () {
+                    layer.close(index);
+                }
+            });
+            return response;
+        }
+
+        function RenderPage(laypage, ingredient_table, elem, curr, limit, count) {
+            laypage.curr = curr;
+            laypage.limit = limit;
+            laypage.render({
+                elem: elem,
+                layout: ['count', 'prev', 'page', 'next', 'limit', 'skip'],
+                curr: curr,
+                limit: limit,
+                count: count,
+                jump: function (obj, first) {
+                    if (!first) {
+                        let response = QueryData(layer, 'POST', '/WebApi/FQS/Ingredient/Query', {
+                            'ingredient_name': $("#ingredient_name").text(),
+                            'page_index': obj.curr,
+                            'page_size': obj.limit,
+                            'order_by': 'id'
+                        });
+                        if (response.data == null) {
+                            response.data = [];
+                        }
+                        type_table.reload({data: response.data});
+                        RenderPage(laypage, type_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
+                    }
+                }
+            });
+        }
+
+        $(function () {
+
+            layui.use(['layer', 'form', 'table', 'element', 'laypage'], function () {
+                let layer = layui.layer
+                    , form = layui.form
+                    , laypage = layui.laypage
+                    , element = layui.element
+                    , table = layui.table;
+
+                let ingredient_table = table.render({
+                    elem: '#ingredient'
+                    , toolbar: '#toolbar'
+                    , defaultToolbar: ['filter']
+                    , height: 'full-200'
+                    , cellMinWidth: 80
+                    , data: []
+                    , cols: [[ //表头
+                        {type: 'checkbox'}
+                        , {field: 'id', title: 'ID'}
+                        , {field: 'ingredient_name', title: '配料名', edit: 'text'}
+                        , {field: 'ingredient_info', title: '配料信息', edit: 'text'}
+                    ]]
+                });
+                let addIngredientPageIndex = 0;
+                table.on('toolbar(ingredient)', function (obj) {
+                    let checkStatus = table.checkStatus(obj.config.id);
+                    switch (obj.event) {
+                        case 'delete':
+                            let data = checkStatus.data;
+                            if (data.length === 0) {
+                                layer.alert('必须选中要删除的行');
+                            } else {
+                                layer.confirm('确认删除', function (index) {
+                                    for (let i = 0; i < data.length; i++) {
+                                        let ingredient = data[i];
+                                        $.ajax({
+                                            type: 'POST',
+                                            url: '/WebApi/FQS/Ingredient/Delete',
+                                            async: false,
+                                            dataType: 'json',
+                                            data: {'ingredient_id': ingredient.id},
+                                            success: function (data) {
+                                                if (data.code !== 200) {
+                                                    layer.msg(data.error_message)
+                                                }
+                                            }
+                                        });
+                                    }
+                                    layer.close(index);
+                                    let response = QueryData(layer, 'POST', '/WebApi/FQS/Ingredient/Query', {
+                                        'ingredient_name': $("#ingredient_name").text(),
+                                        'page_index': laypage.curr,
+                                        'page_size': laypage.limit,
+                                        'order_by': 'id'
+                                    });
+                                    if (response.data == null) {
+                                        response.data = [];
+                                    }
+                                    ingredient_table.reload({data: response.data});
+                                    RenderPage(laypage, ingredient_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
+                                });
+                            }
+                            break;
+                        case 'add':
+                            addIngredientPageIndex = layer.open({
+                                type: 1,
+                                title: "",
+                                content: $("#add-ingredient-page")[0].innerHTML
+                            });
+                            break;
+                    }
+                });
+                table.on('edit(ingredient)', function (obj) {
+                    let data = obj.data
+                        , field = obj.field;
+                    data[field] = obj.value;
+                    data["ingredient_id"] = data.id;
+                    $.ajax({
+                        type: 'POST',
+                        url: '/WebApi/FQS/Ingredient/Save',
+                        async: false,
+                        dataType: 'json',
+                        data: data,
+                        success: function (data) {
+                            if (data.code !== 200) {
+                                layer.msg(data.error_message)
+                            }
+                        }
+                    });
+                });
+                form.on('submit(ingredientSearch)', function (data) {
+                    let response = QueryData(layer, 'POST', '/WebApi/FQS/Ingredient/Query', {
+                        'ingredient_name': data.field.ingredient_name,
+                        'page_index': 1,
+                        'page_size': 10,
+                        'order_by': 'id'
+                    });
+                    if (response.data == null) {
+                        response.data = [];
+                    }
+                    ingredient_table.reload({data: response.data});
+                    RenderPage(laypage, ingredient_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
+                    return false;
+                });
+                form.on('submit(ingredientAdd)', function (data) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/WebApi/FQS/Ingredient/Save",
+                        data: data.field,
+                        dataType: "json",
+                        success: function (data) {
+                            if (data.code !== 200) {
+                                layer.msg(response.error_message)
+                            } else {
+                                let response = QueryData(layer, 'POST', '/WebApi/FQS/Ingredient/Query', {
+                                    'ingredient_name': $("#ingredient_name").text(),
+                                    'page_index': laypage.curr,
+                                    'page_size': laypage.limit,
+                                    'order_by': 'id'
+                                });
+                                ingredient_table.reload({data: response.data});
+                                RenderPage(
+                                    laypage,
+                                    ingredient_table,
+                                    'page',
+                                    response.page_entity.page_index,
+                                    response.page_entity.page_size,
+                                    response.page_entity.total_row
+                                );
+                                layer.close(addIngredientPageIndex);
+                            }
+                        }
+                    });
+                    return false;
+                });
+                RenderPage(laypage, ingredient_table, 'page', 1, 10, 1);
+
+                let init_data = QueryData(
+                    layer,
+                    'POST',
+                    '/WebApi/FQS/Ingredient/Query',
+                    {
+                        'ingredient_name': '',
+                        'page_index': 1,
+                        'page_size': 10,
+                        'order_by': 'id'
+                    }
+                );
+                if (init_data.data == null) {
+                    init_data.data = [];
+                }
+                ingredient_table.reload({data: init_data.data});
+                RenderPage(laypage, ingredient_table, 'page', init_data.page_entity.page_index, init_data.page_entity.page_size, init_data.page_entity.total_row);
+            });
+        });
+    </script>
+</head>
+<body>
+<div class="layui-container">
+    <div class="layui-row">
+        <div class="layui-fluid">
+            <form class="layui-form" action="">
+                <div class="layui-form-item">
+                    <div class="layui-input-inline">
+                        <input id="ingredient_name" type="text" name="ingredient_name" placeholder="配料名"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                    <div class="layui-input-inline">
+                        <button class="layui-btn layui-btn-normal" lay-submit lay-filter="ingredientSearch">查询</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="layui-row">
+        <div class="layui-fluid">
+            <table id="ingredient" lay-filter="ingredient"></table>
+            <div id="page"></div>
+        </div>
+    </div>
+</div>
+</body>
+<script type="text/html" id="toolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">添加</button>
+        <button class="layui-btn layui-btn-danger layui-btn-sm" lay-event="delete">删除</button>
+    </div>
+</script>
+<script type="text/html" id="add-ingredient-page">
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <form class="layui-form" action="">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">配料名：</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="ingredient_name" placeholder="配料名" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item layui-form-text">
+                    <label class="layui-form-label">配料信息：</label>
+                    <div class="layui-input-block">
+                        <textarea placeholder="配料信息" class="layui-textarea" name="ingredient_info"></textarea>
+                    </div>
+                </div>
+                <div>
+                    <div class="layui-input-block">
+                        <button class="layui-btn layui-btn-normal" lay-submit lay-filter="ingredientAdd">添加</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+    </div>
+</script>
+</html>

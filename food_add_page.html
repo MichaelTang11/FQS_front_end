@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="favicon.ico"/>
+    <link rel="bookmark" href="favicon.ico"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>食品保存</title>
+    <link rel="stylesheet" href="assets/layui/css/layui.css">
+    <script src="assets/layui/layui.js"></script>
+    <script src="assets/xm-select/xm-select.js"></script>
+    <script src="assets/jquery/jquery-3.4.1.min.js"></script>
+    <script>
+        $(function () {
+            let brandSelector = xmSelect.render({
+                el: '#brand',
+                name: 'brand_id',
+                radio: true,
+                clickClose: true,
+                filterable: true,
+                remoteSearch: true,
+                layVerify: 'required',
+                layVerType: '必须选择品牌',
+                remoteMethod: function (val, cb, show) {
+                    if (!val) {
+                        return cb([]);
+                    }
+                    $.ajax({
+                        type: 'POST',
+                        url: '/WebApi/FQS/Brand/Query',
+                        async: false,
+                        dataType: 'json',
+                        data: {'brand_name': val},
+                        success: function (data) {
+                            if (data.code !== 200) {
+                                layer.msg(data.error_message)
+                            }
+                            let result = [];
+                            layui.each(data.data, function (index, item) {
+                                result.push({name: item.brand_name, value: item.id});
+                            });
+                            return cb(result);
+                        }
+                    });
+                }
+            });
+            let typeSelector = xmSelect.render({
+                el: '#type',
+                radio: true,
+                clickClose: true,
+                filterable: true,
+                remoteSearch: true,
+                name: 'type_id',
+                layVerify: 'required',
+                layVerType: '必须选择类型',
+                remoteMethod: function (val, cb, show) {
+                    if (!val) {
+                        return cb([]);
+                    }
+                    $.ajax({
+                        type: 'POST',
+                        url: '/WebApi/FQS/Type/Query',
+                        async: false,
+                        dataType: 'json',
+                        data: {'type_name': val},
+                        success: function (data) {
+                            if (data.code !== 200) {
+                                layer.msg(data.error_message)
+                            }
+                            let result = [];
+                            layui.each(data.data, function (index, item) {
+                                result.push({name: item.type_name, value: item.id});
+                            });
+                            return cb(result);
+                        }
+                    });
+                }
+            });
+            let ingredientsSelector = xmSelect.render({
+                el: '#ingredients',
+                toolbar: {show: true},
+                autoRow: true,
+                filterable: true,
+                remoteSearch: true,
+                name: 'ingredient_ids',
+                layVerify: 'required',
+                layVerType: '必须选择配料',
+                remoteMethod: function (val, cb, show) {
+                    if (!val) {
+                        return cb([]);
+                    }
+                    $.ajax({
+                        type: 'POST',
+                        url: '/WebApi/FQS/Ingredient/Query',
+                        async: false,
+                        dataType: 'json',
+                        data: {'ingredient_name': val},
+                        success: function (data) {
+                            if (data.code !== 200) {
+                                layer.msg(data.error_message)
+                            }
+                            let result = [];
+                            layui.each(data.data, function (index, item) {
+                                result.push({name: item.ingredient_name, value: item.id});
+                            });
+                            return cb(result);
+                        }
+                    });
+                }
+            });
+            layui.use(['layer', 'form'], function () {
+                let layer = layui.layer
+                    , form = layui.form;
+                form.on('submit(foodSave)', function (data) {
+                    let field = data.field;
+                    let ingredient_ids = [];
+                    layui.each(field.ingredient_ids.split(','), function (index, item) {
+                        ingredient_ids.push(parseInt(item));
+                    });
+                    $.ajax({
+                        type: 'POST',
+                        url: '/WebApi/FQS/Food/Save',
+                        contentType: 'application/json',
+                        async: false,
+                        dataType: 'json',
+                        data: JSON.stringify({
+                            'food_name': field.food_name,
+                            'type_id': parseInt(field.type_id),
+                            'brand_id': parseInt(field.brand_id),
+                            'ingredient_ids': ingredient_ids
+                        }),
+                        success: function (data) {
+                            if (data.code !== 200) {
+                                layer.msg(data.error_message);
+                            } else {
+                                parent.$("form").submit();
+                                parent.layer.closeAll();
+                            }
+                        }
+                    });
+                    return false;
+                });
+            });
+        });
+    </script>
+</head>
+<body>
+<div class="layui-container">
+    <div class="layui-row">
+        <div class="layui-col-md8 layui-col-md-offset2" style="padding-top: 10px;">
+            <form class="layui-form" action="">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">食品名</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="food_name" lay-verify="required" lay-reqtext="必须输入食品名"
+                               autocomplete="off"
+                               placeholder="请输入食品名" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">品牌</label>
+                    <div class="layui-input-block">
+                        <div id="brand"></div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">类型</label>
+                    <div class="layui-input-block">
+                        <div id="type"></div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">配料</label>
+                    <div class="layui-input-block">
+                        <div id="ingredients"></div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <div class="layui-btn-group">
+                            <button class="layui-btn layui-btn-normal" lay-submit lay-filter="foodSave">保存</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>
