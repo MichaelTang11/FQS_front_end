@@ -11,13 +11,12 @@
     <script src="assets/jquery/jquery-3.4.1.min.js"></script>
     <script type="text/javascript">
 
-        function QueryData(layer, method, url, queryData) {
+        function QueryData(layer, brand_table, method, url, queryData) {
             let response;
             let index = layer.load(0);
             $.ajax({
                 type: method,
                 url: url,
-                async: false,
                 dataType: 'json',
                 data: queryData,
                 success: function (data) {
@@ -25,13 +24,15 @@
                     response = data;
                     if (response.code !== 200) {
                         layer.msg(response.error_message)
+                    } else {
+                        brand_table.reload({data: response.data, limit: response.page_entity.page_size});
+                        RenderPage(laypage, brand_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
                     }
                 },
                 error: function () {
                     layer.close(index);
                 }
             });
-            return response;
         }
 
         function RenderPage(laypage, brand_table, elem, curr, limit, count) {
@@ -45,24 +46,18 @@
                 count: count,
                 jump: function (obj, first) {
                     if (!first) {
-                        let response = QueryData(layer, 'POST', '/WebApi/FQS/Brand/Query', {
+                        QueryData(layer, brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
                             'brand_name': $("#brand_name").text(),
                             'page_index': obj.curr,
                             'page_size': obj.limit,
                             'order_by': 'id'
                         });
-                        if (response.data == null) {
-                            response.data = [];
-                        }
-                        brand_table.reload({data: response.data});
-                        RenderPage(laypage, brand_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
                     }
                 }
             });
         }
 
         $(function () {
-
             layui.use(['layer', 'form', 'table', 'element', 'laypage'], function () {
                 let layer = layui.layer
                     , form = layui.form
@@ -108,17 +103,12 @@
                                         });
                                     }
                                     layer.close(index);
-                                    let response = QueryData(layer, 'POST', '/WebApi/FQS/Brand/Query', {
+                                    QueryData(layer,brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
                                         'brand_name': $("#brand_name").text(),
                                         'page_index': laypage.curr,
                                         'page_size': laypage.limit,
                                         'order_by': 'id'
                                     });
-                                    if (response.data == null) {
-                                        response.data = [];
-                                    }
-                                    brand_table.reload({data: response.data});
-                                    RenderPage(laypage, brand_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
                                 });
                             }
                             break;
@@ -136,14 +126,12 @@
                                         if (data.code != 200) {
                                             layer.msg(data.error_message)
                                         }
-                                        let response = QueryData(layer, 'POST', '/WebApi/FQS/Brand/Query', {
+                                        QueryData(layer, brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
                                             'brand_name': $("#brand_name").text(),
                                             'page_index': laypage.curr,
                                             'page_size': laypage.limit,
                                             'order_by': 'id'
                                         });
-                                        brand_table.reload({data: response.data});
-                                        RenderPage(laypage, brand_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
                                         layer.close(index);
                                     }
                                 });
@@ -166,33 +154,19 @@
                             if (data.code !== 200) {
                                 layer.msg(data.error_message)
                             }
+                            QueryData(layer,brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
+                                'brand_name': $("#brand_name").text(),
+                                'page_index': laypage.curr,
+                                'page_size': laypage.limit,
+                                'order_by': 'id'
+                            });
                         }
                     });
                 });
-
-                RenderPage(laypage, brand_table, 'page', 1, 10, 1);
-                let init_data = QueryData(layer, 'POST', '/WebApi/FQS/Brand/Query', {
-                    'brand_name': '',
-                    'page_index': 1,
-                    'page_size': 10,
-                    'order_by': 'id'
-                });
-                if (init_data.data == null) {
-                    init_data.data = [];
-                }
-                brand_table.reload({data: init_data.data});
-                RenderPage(
-                    laypage,
-                    brand_table,
-                    'page',
-                    init_data.page_entity.page_index,
-                    init_data.page_entity.page_size,
-                    init_data.page_entity.total_row
-                );
-
                 form.on('submit(brandSearch)', function (data) {
-                    let response = QueryData(
+                    QueryData(
                         layer,
+                        brand_table,
                         'POST',
                         '/WebApi/FQS/Brand/Query',
                         {
@@ -202,20 +176,16 @@
                             'order_by': 'id'
                         }
                     );
-                    if (response.data == null) {
-                        response.data = [];
-                    }
-                    brand_table.reload({data: response.data});
-                    RenderPage(
-                        laypage,
-                        brand_table,
-                        'page',
-                        response.page_entity.page_index,
-                        response.page_entity.page_size,
-                        response.page_entity.total_row
-                    );
                     return false;
                 });
+                RenderPage(laypage, brand_table, 'page', 1, 10, 1);
+                QueryData(layer, brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
+                    'brand_name': '',
+                    'page_index': 1,
+                    'page_size': 10,
+                    'order_by': 'id'
+                });
+
             });
         });
     </script>

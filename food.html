@@ -12,7 +12,7 @@
     <script src="assets/jquery/jquery-3.4.1.min.js"></script>
     <script type="text/javascript">
 
-        function QueryData(layer, method, url, queryData) {
+        function QueryData(layer,laypage, food_table, method, url, queryData) {
             let response;
             let index = layer.load(0);
             $.ajax({
@@ -26,13 +26,18 @@
                     response = data;
                     if (response.code !== 200) {
                         layer.msg(response.error_message)
+                    } else {
+                        if (response.data == null) {
+                            response.data = [];
+                        }
+                        food_table.reload({data: response.data,limit:response.page_entity.page_size});
+                        RenderPage(laypage, food_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
                     }
                 },
                 error: function () {
                     layer.close(index);
                 }
             });
-            return response;
         }
 
         function RenderPage(laypage, food_table, elem, curr, limit, count) {
@@ -46,30 +51,32 @@
                 count: count,
                 jump: function (obj, first) {
                     if (!first) {
-                        let response = QueryData(layer, 'POST', '/WebApi/FQS/Food/Query', {
-                            'food_name': $("#food_name").text(),
-                            'page_index': obj.curr,
-                            'page_size': obj.limit,
-                            'order_by': 'T1.id'
-                        });
-                        if (response.data == null) {
-                            response.data = [];
-                        }
-                        food_table.reload({data: response.data});
-                        RenderPage(laypage, food_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
+                        QueryData(
+                            layer,
+                            laypage,
+                            food_table,
+                            'POST',
+                            '/WebApi/FQS/Food/Query',
+                            {
+                                'food_name': $("#food_name").text(),
+                                'page_index': obj.curr,
+                                'page_size': obj.limit,
+                                'order_by': 'T1.id'
+                            }
+                        );
                     }
                 }
             });
         }
 
         $(function () {
-            layui.use(['layer', 'form', 'table', 'element', 'laypage','util'], function () {
+            layui.use(['layer', 'form', 'table', 'element', 'laypage', 'util'], function () {
                 let layer = layui.layer
                     , form = layui.form
                     , laypage = layui.laypage
                     , element = layui.element
                     , table = layui.table
-                    ,util=layui.util;
+                    , util = layui.util;
 
                 let food_table = table.render({
                     elem: '#food'
@@ -82,8 +89,8 @@
                         {type: 'checkbox'}
                         , {field: 'food_id', title: 'ID'}
                         , {field: 'food_name', title: '食品名'}
-                        , {field: 'brand', title: '品牌',templet:'<div>{{d.brand.brand_name}}</div>'}
-                        , {field: 'type', title: '类型',templet:'<div>{{d.type.type_name}}</div>'}
+                        , {field: 'brand', title: '品牌', templet: '<div>{{d.brand.brand_name}}</div>'}
+                        , {field: 'type', title: '类型', templet: '<div>{{d.type.type_name}}</div>'}
                         , {field: 'ingredients', title: '配料', templet: '#ingredientNameTemplate'}
                     ]]
                 });
@@ -113,24 +120,19 @@
                                         });
                                     }
                                     layer.close(index);
-                                    let response = QueryData(layer, 'POST', '/WebApi/FQS/Food/Query', {
+                                    QueryData(layer,laypage, food_table, 'POST', '/WebApi/FQS/Food/Query', {
                                         'food_name': $("#food_name").text(),
                                         'page_index': laypage.curr,
                                         'page_size': laypage.limit,
                                         'order_by': 'T1.id'
                                     });
-                                    if (response.data == null) {
-                                        response.data = [];
-                                    }
-                                    food_table.reload({data: response.data});
-                                    RenderPage(laypage, food_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
                                 });
                             }
                             break;
                         case 'add':
                             addFoodPageIndex = layer.open({
                                 type: 2,
-                                title:"",
+                                title: "",
                                 scrollbar: false,
                                 area: ['500px', '600px'],
                                 content: 'food_add_page.html'
@@ -139,36 +141,26 @@
                     }
                 });
                 form.on('submit(foodSearch)', function (data) {
-                    let response = QueryData(layer, 'POST', '/WebApi/FQS/Food/Query', {
+                    QueryData(layer, laypage,food_table, 'POST', '/WebApi/FQS/Food/Query', {
                         'food_name': data.field.food_name,
                         'page_index': 1,
                         'page_size': 10,
                         'order_by': 'T1.id'
                     });
-                    if (response.data == null) {
-                        response.data = [];
-                    }
-                    food_table.reload({data: response.data});
-                    RenderPage(laypage, food_table, 'page', response.page_entity.page_index, response.page_entity.page_size, response.page_entity.total_row);
                     return false;
                 });
-                util.event('lay-active',{
-                    tip:function () {
+                util.event('lay-active', {
+                    tip: function () {
                         layer.alert($(this).data('info'));
                     }
                 });
                 RenderPage(laypage, food_table, 'page', 1, 10, 1);
-                let init_data = QueryData(layer, 'POST', '/WebApi/FQS/Food/Query', {
+                QueryData(layer,laypage, food_table, 'POST', '/WebApi/FQS/Food/Query', {
                     'food_name': '',
                     'page_index': 1,
                     'page_size': 10,
                     'order_by': 'T1.id'
                 });
-                if (init_data.data == null) {
-                    init_data.data = [];
-                }
-                food_table.reload({data: init_data.data});
-                RenderPage(laypage, food_table, 'page', init_data.page_entity.page_index, init_data.page_entity.page_size, init_data.page_entity.total_row);
             });
         });
     </script>
@@ -205,44 +197,46 @@
     </div>
 </script>
 <!--<script type="text/html" id="foodAddPage">-->
-    <!--<form class="layui-form" action="">-->
-        <!--<div class="layui-form-item">-->
-            <!--<label class="layui-form-label">食品名</label>-->
-            <!--<div class="layui-input-block">-->
-                <!--<input type="text" name="title" lay-verify="required" lay-reqtext="必须输入食品名" autocomplete="off"-->
-                       <!--placeholder="请输入食品名" class="layui-input">-->
-            <!--</div>-->
-        <!--</div>-->
-        <!--<div class="layui-form-item">-->
-            <!--<label class="layui-form-label">品牌</label>-->
-            <!--<div class="layui-input-block">-->
-                <!--&lt;!&ndash;<input type="text" name="title" lay-verify="required" lay-reqtext="必须输入食品名" autocomplete="off" placeholder="请输入食品名" class="layui-input" style="position:absolute;z-index: 2;">&ndash;&gt;-->
-                <!--<select name="brand_id" lay-search lay-verify="required">-->
-                    <!--<option value="111">111</option>-->
-                    <!--<option value="222">222</option>-->
-                    <!--<option value="333">333</option>-->
-                <!--</select>-->
-            <!--</div>-->
-        <!--</div>-->
-        <!--<div class="layui-form-item">-->
-            <!--<label class="layui-form-label">类型</label>-->
-            <!--<div class="layui-input-block">-->
-                <!--<select name="type_id" lay-search lay-verify="required">-->
-                <!--</select>-->
-            <!--</div>-->
-        <!--</div>-->
-        <!--<div class="layui-form-item">-->
-            <!--<label class="layui-form-label">配料</label>-->
-            <!--<div class="layui-input-block">-->
-                <!--<select name="ingredient_id" lay-search lay-verify="required">-->
-                <!--</select>-->
-            <!--</div>-->
-        <!--</div>-->
-    <!--</form>-->
+<!--<form class="layui-form" action="">-->
+<!--<div class="layui-form-item">-->
+<!--<label class="layui-form-label">食品名</label>-->
+<!--<div class="layui-input-block">-->
+<!--<input type="text" name="title" lay-verify="required" lay-reqtext="必须输入食品名" autocomplete="off"-->
+<!--placeholder="请输入食品名" class="layui-input">-->
+<!--</div>-->
+<!--</div>-->
+<!--<div class="layui-form-item">-->
+<!--<label class="layui-form-label">品牌</label>-->
+<!--<div class="layui-input-block">-->
+<!--&lt;!&ndash;<input type="text" name="title" lay-verify="required" lay-reqtext="必须输入食品名" autocomplete="off" placeholder="请输入食品名" class="layui-input" style="position:absolute;z-index: 2;">&ndash;&gt;-->
+<!--<select name="brand_id" lay-search lay-verify="required">-->
+<!--<option value="111">111</option>-->
+<!--<option value="222">222</option>-->
+<!--<option value="333">333</option>-->
+<!--</select>-->
+<!--</div>-->
+<!--</div>-->
+<!--<div class="layui-form-item">-->
+<!--<label class="layui-form-label">类型</label>-->
+<!--<div class="layui-input-block">-->
+<!--<select name="type_id" lay-search lay-verify="required">-->
+<!--</select>-->
+<!--</div>-->
+<!--</div>-->
+<!--<div class="layui-form-item">-->
+<!--<label class="layui-form-label">配料</label>-->
+<!--<div class="layui-input-block">-->
+<!--<select name="ingredient_id" lay-search lay-verify="required">-->
+<!--</select>-->
+<!--</div>-->
+<!--</div>-->
+<!--</form>-->
 <!--</script>-->
 <script type="text/html" id="ingredientNameTemplate">
     {{# layui.each(d.ingredients, function(index, item){ }}
-        <button class="layui-btn layui-btn-xs layui-btn-radius layui-btn-normal" data-info="{{=item.ingredient_info}}" lay-active="tip">{{=item.ingredient_name}}</button>
+    <button class="layui-btn layui-btn-xs layui-btn-radius layui-btn-normal" data-info="{{=item.ingredient_info}}"
+            lay-active="tip">{{=item.ingredient_name}}
+    </button>
     {{# }); }}
 </script>
 <script type="text/html" id="ingredientInfoTemplate">
