@@ -18,7 +18,6 @@
             $.ajax({
                 type: method,
                 url: url,
-                async: false,
                 dataType: 'json',
                 data: queryData,
                 success: function (data) {
@@ -63,8 +62,8 @@
                     obj.tr.addClass('layui-table-click').siblings().removeClass('layui-table-click');
                     layer.open({
                         type: 1,
-                        title: false,
-                        offset: '20px',
+                        offset:$('body').height()/2-200+'px',
+                        title: '配料信息',
                         content: $("#ingredientShowPage")[0].innerHTML,
                         area: '300px',
                         resize: false,

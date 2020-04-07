@@ -11,7 +11,7 @@
     <script src="assets/jquery/jquery-3.4.1.min.js"></script>
     <script type="text/javascript">
 
-        function QueryData(layer, brand_table, method, url, queryData) {
+        function QueryData(layer,laypage, brand_table, method, url, queryData) {
             let response;
             let index = layer.load(0);
             $.ajax({
@@ -46,7 +46,7 @@
                 count: count,
                 jump: function (obj, first) {
                     if (!first) {
-                        QueryData(layer, brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
+                        QueryData(layer,laypage, brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
                             'brand_name': $("#brand_name").text(),
                             'page_index': obj.curr,
                             'page_size': obj.limit,
@@ -103,7 +103,7 @@
                                         });
                                     }
                                     layer.close(index);
-                                    QueryData(layer,brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
+                                    QueryData(layer,laypage,brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
                                         'brand_name': $("#brand_name").text(),
                                         'page_index': laypage.curr,
                                         'page_size': laypage.limit,
@@ -126,7 +126,7 @@
                                         if (data.code != 200) {
                                             layer.msg(data.error_message)
                                         }
-                                        QueryData(layer, brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
+                                        QueryData(layer,laypage, brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
                                             'brand_name': $("#brand_name").text(),
                                             'page_index': laypage.curr,
                                             'page_size': laypage.limit,
@@ -154,7 +154,7 @@
                             if (data.code !== 200) {
                                 layer.msg(data.error_message)
                             }
-                            QueryData(layer,brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
+                            QueryData(layer,laypage,brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
                                 'brand_name': $("#brand_name").text(),
                                 'page_index': laypage.curr,
                                 'page_size': laypage.limit,
@@ -165,7 +165,7 @@
                 });
                 form.on('submit(brandSearch)', function (data) {
                     QueryData(
-                        layer,
+                        layer,laypage,
                         brand_table,
                         'POST',
                         '/WebApi/FQS/Brand/Query',
@@ -179,7 +179,7 @@
                     return false;
                 });
                 RenderPage(laypage, brand_table, 'page', 1, 10, 1);
-                QueryData(layer, brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
+                QueryData(layer, laypage,brand_table, 'POST', '/WebApi/FQS/Brand/Query', {
                     'brand_name': '',
                     'page_index': 1,
                     'page_size': 10,

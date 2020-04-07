@@ -18,7 +18,6 @@
             $.ajax({
                 type: method,
                 url: url,
-                async: false,
                 dataType: 'json',
                 data: queryData,
                 success: function (data) {
@@ -132,9 +131,9 @@
                         case 'add':
                             addFoodPageIndex = layer.open({
                                 type: 2,
-                                title: "",
-                                scrollbar: false,
-                                area: ['500px', '600px'],
+                                title: '添加食品',
+                                area: '400px',
+                                move:'#layui-layer-content',
                                 content: 'food_add_page.html'
                             });
                             break;
