@@ -70,7 +70,9 @@
                         success: function (layero, index) {
                             ingredient_table = table.render({
                                 elem: '#ingredient'
+                                ,height: 400
                                 , cellMinWidth: 80
+                                ,limit:1000
                                 , data: obj.data.ingredients
                                 , cols: [[ //表头
                                     {field: 'ingredient_name', title: '配料名'}
